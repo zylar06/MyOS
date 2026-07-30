@@ -11,6 +11,10 @@ extern void physical_memory_init(unsigned int magic, unsigned int info_address);
 extern void paging_init(void);
 extern void heap_init(void);
 extern void *kmalloc(unsigned int size);
+extern void process_init(void);
+extern unsigned int process_create(void (*entry)(void));
+extern void process_yield(void);
+extern void process_demo_task(void);
 
 static int row = 0;
 static int column = 0;
@@ -172,4 +176,8 @@ void kernel_main(unsigned int magic, unsigned int info_address)
     {
         terminal_write("Kernel heap allocation failed\n");
     }
+
+    process_init();
+    process_create(process_demo_task);
+    process_yield();
 }
