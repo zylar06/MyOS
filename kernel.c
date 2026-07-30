@@ -8,6 +8,7 @@ extern void pic_remap(void);
 extern void timer_init(void);
 extern void keyboard_init(void);
 extern void physical_memory_init(unsigned int magic, unsigned int info_address);
+extern void paging_init(void);
 
 static int row = 0;
 static int column = 0;
@@ -154,4 +155,6 @@ void kernel_main(unsigned int magic, unsigned int info_address)
     terminal_write("Keyboard initialized successfully\n");
 
     physical_memory_init(magic, info_address);
+
+    paging_init();
 }
