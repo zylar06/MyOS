@@ -28,7 +28,8 @@ ASM_SOURCES := \
     src/arch/i386/paging.asm \
     src/arch/i386/process.asm \
     src/arch/i386/user.asm \
-    src/arch/i386/syscall.asm
+    src/arch/i386/syscall.asm \
+    src/user/init.asm
 
 C_OBJECTS := $(C_SOURCES:src/%.c=build/c/%.o)
 ASM_OBJECTS := $(ASM_SOURCES:src/%.asm=build/asm/%.o)
