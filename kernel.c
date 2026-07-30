@@ -4,6 +4,7 @@
 
 extern void gdt_init(void);
 extern void idt_init(void);
+extern void pic_remap(void);
 
 static int row = 0;
 static int column = 0;
@@ -137,4 +138,8 @@ void kernel_main(void)
     terminal_write("Initializing IDT...\n");
     idt_init();
     terminal_write("IDT initialized successfully\n");
+
+    terminal_write("Remapping PIC...\n");
+    pic_remap();
+    terminal_write("PIC remapped successfully\n");
 }
