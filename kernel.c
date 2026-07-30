@@ -7,6 +7,7 @@ extern void idt_init(void);
 extern void pic_remap(void);
 extern void timer_init(void);
 extern void keyboard_init(void);
+extern void physical_memory_init(unsigned int magic, unsigned int info_address);
 
 static int row = 0;
 static int column = 0;
@@ -129,7 +130,7 @@ void terminal_write_hex(unsigned int value)
         terminal_putchar(digits[digit]);
     }
 }
-void kernel_main(void)
+void kernel_main(unsigned int magic, unsigned int info_address)
 {
     terminal_clear();
 
@@ -151,4 +152,6 @@ void kernel_main(void)
 
     keyboard_init();
     terminal_write("Keyboard initialized successfully\n");
+
+    physical_memory_init(magic, info_address);
 }

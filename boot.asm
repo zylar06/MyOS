@@ -18,6 +18,8 @@ extern kernel_main
 _start:
     cld
     mov esp,stack_top
+    push ebx                    ; multiboot information address
+    push eax                    ; multiboot magic
     call kernel_main
 
 hang:
