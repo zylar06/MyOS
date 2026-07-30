@@ -52,30 +52,25 @@ make clean
 
 ```text
 MyOS/
-├── .gitignore    # 忽略构建生成的目标文件和内核镜像
-├── Makefile      # 编译、链接、运行和清理规则
-├── boot.asm      # Multiboot 入口、内核栈和启动跳转
-├── linker.ld     # 内核链接脚本和内存布局
-├── kernel.c      # 内核主函数和 VGA 文本终端输出
-├── gdt.c         # GDT 描述符表的构造和初始化
-├── gdt.asm       # 加载 GDT 并刷新代码/数据段寄存器
-├── idt.c         # IDT 表、CPU 异常注册和异常信息输出
-├── idt.asm       # IDT 加载函数、CPU 异常和 IRQ 入口
-├── pic.c         # 8259A PIC 重映射和 IRQ 屏蔽
-├── timer.c       # PIT 初始化和 IRQ0 时钟处理
-├── keyboard.c    # 键盘扫描码读取和字符输出
-├── physical_memory.c # Multiboot 内存地图和页框分配器
-├── paging.c       # 页目录、页表和恒等映射
-├── paging.asm     # 加载 CR3 并开启分页
-├── kernel_heap.c  # 基于页映射的内核 bump heap
-├── process.c      # 任务结构、创建和协作式调度
-├── process.asm    # 任务上下文切换
-└── README.md     # 项目说明文档
+├── include/              # 公共接口（持续补充）
+├── src/
+│   ├── arch/i386/         # 启动、GDT、IDT、PIC、分页、特权级切换
+│   ├── kernel/            # 内核入口和终端输出
+│   ├── mm/                # 物理内存、分页、内核堆
+│   ├── drivers/           # PIT 时钟和 PS/2 键盘
+│   ├── sched/             # 任务结构和上下文切换
+│   ├── syscall/           # int 0x80 系统调用分发
+│   ├── fs/                # ramfs 文件系统
+│   └── user/              # 预置用户程序
+├── build/                 # 构建生成的目标文件
+├── linker.ld              # 内核和用户程序链接布局
+├── Makefile               # 编译、链接、运行和清理规则
+└── README.md              # 项目说明文档
 ```
 
 ## 文件说明
 
-### `boot.asm`
+### `src/arch/i386/boot.asm`
 
 定义 Multiboot 头，提供 `_start` 入口，建立 16 KiB 内核栈，并调用 `kernel_main`。进入 C 代码前会清除方向标志（`cld`）。
 
@@ -83,45 +78,57 @@ MyOS/
 
 将内核链接到物理地址 `0x100000`，并按 `.multiboot`、`.text`、`.rodata`、`.data` 和 `.bss` 安排各个段。
 
-### `kernel.c`
+### `src/kernel/main.c`
 
 实现内核入口和 VGA 文本终端，包括清屏、字符输出、字符串输出、十进制/十六进制输出以及滚屏。
 
-### `gdt.c` / `gdt.asm`
+### `src/arch/i386/gdt.c` / `gdt.asm`
 
-创建空描述符、内核代码段和内核数据段，并通过 `lgdt` 加载 GDT，随后刷新段寄存器。
+创建内核/用户代码段、数据段和 TSS，并通过 `lgdt`/`ltr` 加载。
 
-### `idt.c` / `idt.asm`
+### `src/arch/i386/idt.c` / `idt.asm`
 
 创建 256 项 IDT 表，注册 0～31 号 CPU 异常和 32～47 号硬件 IRQ 入口。
 
-### `pic.c`
+### `src/arch/i386/pic.c`
 
 初始化并重映射 8259A PIC：主 PIC 映射到 `0x20`～`0x27`，从 PIC 映射到 `0x28`～`0x2F`。目前只有 IRQ0 会被解除屏蔽。
 
-### `timer.c`
+### `src/drivers/timer.c`
 
 配置 PIT，以 100 Hz 产生时钟中断；IRQ0 每次触发时增加 `ticks`，并每 100 次在 VGA 输出一次计数，同时向 PIC 发送 EOI。
 
-### `keyboard.c`
+### `src/drivers/keyboard.c`
 
 读取键盘控制器的扫描码，处理基础字母、数字、符号、Shift 和回车键，并将按键转换为 VGA 文本输出。
 
-### `physical_memory.c`
+### `src/mm/physical.c`
 
 读取 Multiboot 内存地图，用位图记录 4 KiB 物理页框的使用状态，保留低端内存和内核自身占用的区域，并提供基础的页框分配与释放接口。
 
-### `paging.c` / `paging.asm`
+### `src/mm/paging.c` / `src/arch/i386/paging.asm`
 
 建立页目录和页表，将低端 16 MiB 做恒等映射，并保留 16～32 MiB 作为内核堆映射区；然后加载 `CR3` 并设置 `CR0.PG` 开启分页。
 
-### `kernel_heap.c`
+### `src/mm/heap.c`
 
 按需从物理页框分配器取得页面，映射到 16～32 MiB 的内核虚拟地址区间，并提供 `kmalloc`/`kfree`。当前是只增长、不回收的 bump allocator。
 
-### `process.c` / `process.asm`
+### `src/sched/process.c` / `src/arch/i386/process.asm`
 
-提供最小任务系统：每个任务拥有独立内核栈，可以创建任务并通过 `process_yield` 保存和恢复寄存器上下文。目前使用协作式切换，尚未接入时钟抢占。
+提供任务结构、独立内核栈、上下文切换，以及启动 ring 3 合成用户任务所需的 TSS 内核栈切换。目前调度仍以协作式切换为主。
+
+### `src/syscall/syscall.c` / `src/arch/i386/syscall.asm`
+
+通过 DPL=3 的 `int 0x80` 门分发 `write`、`open`、`read`、`close`、`exit` 和 `yield`。
+
+### `src/fs/ramfs.c`
+
+提供内存文件 `/hello.txt`，支持内核预置文件的打开、读取和关闭。
+
+### `src/arch/i386/user.asm`
+
+包含用户态进入代码和预置 ring 3 程序；用户程序会输出文本并读取 `/hello.txt`。
 
 ## 当前状态
 
@@ -141,11 +148,17 @@ MyOS/
 - 低端 16 MiB 恒等分页映射
 - 基础内核堆和 `kmalloc`
 - 独立内核栈和协作式任务切换
+- 用户代码段、用户数据段和 TSS
+- ring 3 用户任务
+- `int 0x80` 系统调用
+- `write/open/read/close/exit/yield` 系统调用
+- ramfs 的 `/hello.txt`
 
 计划中的功能：
 
-- 更完整的虚拟内存映射
 - 可回收的内核堆分配器
-- 抢占式任务调度
-- 任务切换与调度器
+- 稳定的时钟抢占式任务调度
+- 用户进程独立页目录
+- ELF 用户程序加载器
+- 磁盘文件系统和 ATA 驱动
 - 用户态、系统调用和文件系统

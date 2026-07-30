@@ -1,57 +1,56 @@
-all: kernel.bin
+CC := i686-elf-gcc
+LD := i686-elf-ld
+NASM := nasm
+QEMU := qemu-system-i386
+
+CFLAGS := -m32 -std=gnu11 -ffreestanding -fno-pie -fno-stack-protector \
+           -Wall -Wextra -Wpedantic
+LDFLAGS := -m elf_i386 -T linker.ld
+
+C_SOURCES := \
+    src/kernel/main.c \
+    src/arch/i386/gdt.c \
+    src/arch/i386/idt.c \
+    src/arch/i386/pic.c \
+    src/mm/physical.c \
+    src/mm/paging.c \
+    src/mm/heap.c \
+    src/drivers/timer.c \
+    src/drivers/keyboard.c \
+    src/sched/process.c \
+    src/fs/ramfs.c \
+    src/syscall/syscall.c
+
+ASM_SOURCES := \
+    src/arch/i386/boot.asm \
+    src/arch/i386/gdt.asm \
+    src/arch/i386/idt.asm \
+    src/arch/i386/paging.asm \
+    src/arch/i386/process.asm \
+    src/arch/i386/user.asm \
+    src/arch/i386/syscall.asm
+
+C_OBJECTS := $(C_SOURCES:src/%.c=build/c/%.o)
+ASM_OBJECTS := $(ASM_SOURCES:src/%.asm=build/asm/%.o)
+OBJECTS := $(C_OBJECTS) $(ASM_OBJECTS)
 
 .PHONY: all run clean
 
-boot.o: boot.asm
-	nasm -f elf32 boot.asm -o boot.o
+all: kernel.bin
 
-gdt_asm.o: gdt.asm
-	nasm -f elf32 gdt.asm -o gdt_asm.o
+kernel.bin: $(OBJECTS) linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(OBJECTS)
 
-kernel.o: kernel.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel.c -o kernel.o
+build/c/%.o: src/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -Iinclude -c $< -o $@
 
-gdt.o: gdt.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c gdt.c -o gdt.o
-
-idt_asm.o: idt.asm
-	nasm -f elf32 idt.asm -o idt_asm.o
-
-idt.o: idt.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c idt.c -o idt.o
-
-pic.o: pic.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c pic.c -o pic.o
-
-timer.o: timer.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c timer.c -o timer.o
-
-keyboard.o: keyboard.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c keyboard.c -o keyboard.o
-
-physical_memory.o: physical_memory.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c physical_memory.c -o physical_memory.o
-
-paging_asm.o: paging.asm
-	nasm -f elf32 paging.asm -o paging_asm.o
-
-paging.o: paging.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c paging.c -o paging.o
-
-kernel_heap.o: kernel_heap.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel_heap.c -o kernel_heap.o
-
-process_asm.o: process.asm
-	nasm -f elf32 process.asm -o process_asm.o
-
-process.o: process.c
-	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c process.c -o process.o
-
-kernel.bin: boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o process.o process_asm.o linker.ld
-	i686-elf-ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o process.o process_asm.o
+build/asm/%.o: src/%.asm
+	mkdir -p $(dir $@)
+	$(NASM) -f elf32 $< -o $@
 
 run: kernel.bin
-	qemu-system-i386 -kernel kernel.bin
+	$(QEMU) -kernel $<
 
 clean:
-	rm -f boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o process.o process_asm.o kernel.bin
+	rm -rf build kernel.bin

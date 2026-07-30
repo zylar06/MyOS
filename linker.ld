@@ -14,6 +14,13 @@ SECTIONS
         *(.text)
     }
 
+    .usertext ALIGN(0x1000) :
+    {
+        __user_program_start = .;
+        *(.usertext)
+        __user_program_end = .;
+    }
+
     .rodata :
     {
         *(.rodata)
