@@ -5,6 +5,8 @@
 extern void gdt_init(void);
 extern void idt_init(void);
 extern void pic_remap(void);
+extern void timer_init(void);
+extern void keyboard_init(void);
 
 static int row = 0;
 static int column = 0;
@@ -142,4 +144,11 @@ void kernel_main(void)
     terminal_write("Remapping PIC...\n");
     pic_remap();
     terminal_write("PIC remapped successfully\n");
+
+    terminal_write("Initializing timer...\n");
+    timer_init();
+    terminal_write("Timer initialized successfully\n");
+
+    keyboard_init();
+    terminal_write("Keyboard initialized successfully\n");
 }

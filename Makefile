@@ -23,11 +23,17 @@ idt.o: idt.c
 pic.o: pic.c
 	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c pic.c -o pic.o
 
-kernel.bin: boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o linker.ld
-	i686-elf-ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o
+timer.o: timer.c
+	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c timer.c -o timer.o
+
+keyboard.o: keyboard.c
+	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c keyboard.c -o keyboard.o
+
+kernel.bin: boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o linker.ld
+	i686-elf-ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o
 
 run: kernel.bin
 	qemu-system-i386 -kernel kernel.bin
 
 clean:
-	rm -f boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o kernel.bin
+	rm -f boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o kernel.bin

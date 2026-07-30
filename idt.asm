@@ -6,8 +6,14 @@ global idt_load
 global isr%+i
 %assign i i + 1
 %endrep
+%assign i 0
+%rep 16
+global irq%+i
+%assign i i + 1
+%endrep
 
 extern exception_handler
+extern irq_handler
 
 idt_load:
     mov eax, [esp + 4]
@@ -70,4 +76,36 @@ isr_common:
     add esp, 4
     popa
     add esp, 8                 ; vector + error code
+    iretd
+
+%macro IRQ 1
+irq%1:
+    push dword %1
+    jmp irq_common
+%endmacro
+
+IRQ 0
+IRQ 1
+IRQ 2
+IRQ 3
+IRQ 4
+IRQ 5
+IRQ 6
+IRQ 7
+IRQ 8
+IRQ 9
+IRQ 10
+IRQ 11
+IRQ 12
+IRQ 13
+IRQ 14
+IRQ 15
+
+irq_common:
+    pusha
+    push esp
+    call irq_handler
+    add esp, 4
+    popa
+    add esp, 4                 ; IRQ number
     iretd
