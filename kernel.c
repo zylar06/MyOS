@@ -9,6 +9,8 @@ extern void timer_init(void);
 extern void keyboard_init(void);
 extern void physical_memory_init(unsigned int magic, unsigned int info_address);
 extern void paging_init(void);
+extern void heap_init(void);
+extern void *kmalloc(unsigned int size);
 
 static int row = 0;
 static int column = 0;
@@ -157,4 +159,17 @@ void kernel_main(unsigned int magic, unsigned int info_address)
     physical_memory_init(magic, info_address);
 
     paging_init();
+    heap_init();
+
+    char *heap_test = (char *)kmalloc(5000);
+    if (heap_test != (char *)0)
+    {
+        heap_test[0] = 'H';
+        heap_test[4999] = '!';
+        terminal_write("Kernel heap allocation succeeded\n");
+    }
+    else
+    {
+        terminal_write("Kernel heap allocation failed\n");
+    }
 }

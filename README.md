@@ -67,6 +67,7 @@ MyOS/
 ├── physical_memory.c # Multiboot 内存地图和页框分配器
 ├── paging.c       # 页目录、页表和恒等映射
 ├── paging.asm     # 加载 CR3 并开启分页
+├── kernel_heap.c  # 基于页映射的内核 bump heap
 └── README.md     # 项目说明文档
 ```
 
@@ -110,7 +111,11 @@ MyOS/
 
 ### `paging.c` / `paging.asm`
 
-建立页目录和 4 个页表，将低端 16 MiB 做恒等映射，然后加载 `CR3` 并设置 `CR0.PG` 开启分页。
+建立页目录和页表，将低端 16 MiB 做恒等映射，并保留 16～32 MiB 作为内核堆映射区；然后加载 `CR3` 并设置 `CR0.PG` 开启分页。
+
+### `kernel_heap.c`
+
+按需从物理页框分配器取得页面，映射到 16～32 MiB 的内核虚拟地址区间，并提供 `kmalloc`/`kfree`。当前是只增长、不回收的 bump allocator。
 
 ## 当前状态
 
@@ -128,10 +133,11 @@ MyOS/
 - Multiboot 内存地图解析
 - 4 KiB 物理页框位图分配器
 - 低端 16 MiB 恒等分页映射
+- 基础内核堆和 `kmalloc`
 
 计划中的功能：
 
 - 更完整的虚拟内存映射
-- 内核堆
+- 可回收的内核堆分配器
 - 任务切换与调度器
 - 用户态、系统调用和文件系统

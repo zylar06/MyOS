@@ -38,11 +38,14 @@ paging_asm.o: paging.asm
 paging.o: paging.c
 	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c paging.c -o paging.o
 
-kernel.bin: boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o linker.ld
-	i686-elf-ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o
+kernel_heap.o: kernel_heap.c
+	i686-elf-gcc -m32 -ffreestanding -fno-pie -fno-stack-protector -c kernel_heap.c -o kernel_heap.o
+
+kernel.bin: boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o linker.ld
+	i686-elf-ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o
 
 run: kernel.bin
 	qemu-system-i386 -kernel kernel.bin
 
 clean:
-	rm -f boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel.bin
+	rm -f boot.o kernel.o gdt.o gdt_asm.o idt.o idt_asm.o pic.o timer.o keyboard.o physical_memory.o paging.o paging_asm.o kernel_heap.o kernel.bin
